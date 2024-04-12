@@ -34,17 +34,13 @@ struct route_table_entry *get_best_route(trie_node_t *root, uint32_t ip) {
     struct route_table_entry *match = NULL;
     int bit_num = 31; 
 
-    //printf("asta e ipul %u\n", ip_to_search);
-
     while (root && bit_num >= 0) {
         match = root->entry;
         int child_type = 0;
         if ((ip_to_search & (1 << bit_num))) {
             child_type = 1;
         }
-        //printf("%d\n", child_type);
 
-        // match = root->subnodes[child_type]->entry;
         root = root->subnodes[child_type];
         bit_num--;
     }

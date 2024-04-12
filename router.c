@@ -49,12 +49,10 @@ int main(int argc, char *argv[])
 
 			// packet to destIP = router_interf_ip means ICMP Echo Request
 			if (iph->daddr == inet_addr(get_interface_ip(interface))) {
-				//printf("da vere\n");
 				struct icmphdr *icmph = (struct icmphdr *)(buf + 
 														   sizeof(struct ether_header) +
 														   sizeof(struct iphdr));
 				if (icmph->type == 8 && icmph->code == 0) {  // ICMP Echo request
-					//printf("avem icmp echo request\n");
 					send_icmp_echo_reply(interface, buf, len);
 				}
 
@@ -73,7 +71,6 @@ int main(int argc, char *argv[])
 
 			// verify if ttl is good, if not send icmp tle echo reply
 			if (iph->ttl <= 1) {
-				// printf("tle reply\n");
 				send_icmp_tle_reply(interface, buf, len);
 				continue;
 			}
@@ -99,7 +96,7 @@ int main(int argc, char *argv[])
 				pack_to_enq->buf = calloc(1, MAX_PACKET_LEN);
 				memcpy(pack_to_enq->buf, buf, len);
 				pack_to_enq->len = len;
-				pack_to_enq->interface = interface;
+				pack_to_enq->best_route = best_route;
 
 				queue_enq(waiting_arp_queue, pack_to_enq);
 				send_arp_request(best_route, interface, buf, len);
@@ -139,25 +136,17 @@ int main(int argc, char *argv[])
 				memcpy(arp_table[arp_table_len].mac, arphdr->sha, MAC_LEN);
 
 				arp_table_len++;
-				//printf("%d\n", arp_table[arp_table_len - 1].ip);
 				queue tmp_q = queue_create();
 				while (!queue_empty(waiting_arp_queue)) {
 					package *pack = queue_deq(waiting_arp_queue);
 
-					// package *test = queue_deq(waiting_arp_queue);
-					// struct iphdr *test_hdr = (struct iphdr *)(test->buf + sizeof(struct ether_header));
-
 					struct ether_header *pack_eth_hdr = (struct ether_header *)pack->buf;
-					struct iphdr *pack_ip_hdr = (struct iphdr *)(pack->buf + sizeof(struct ether_header));
-					//printf("in deque unde trb %d\n", pack_ip_hdr->daddr);
-					struct route_table_entry *best_route = get_best_route(root, pack_ip_hdr->daddr);
-					
 
-					if (best_route && best_route->next_hop == arp_table[arp_table_len - 1].ip) {
+					if (pack->best_route && pack->best_route->next_hop == arp_table[arp_table_len - 1].ip) {
 						memcpy(pack_eth_hdr->ether_dhost, arp_table[arp_table_len - 1].mac, MAC_LEN);
-						get_interface_mac(best_route->interface, pack_eth_hdr->ether_shost);
+						get_interface_mac(pack->best_route->interface, pack_eth_hdr->ether_shost);
 
-						send_to_link(best_route->interface, pack->buf, pack->len);
+						send_to_link(pack->best_route->interface, pack->buf, pack->len);
 					} else {
 						queue_enq(tmp_q, pack);
 					}
@@ -165,8 +154,6 @@ int main(int argc, char *argv[])
 				waiting_arp_queue = tmp_q;
 			}
 		}
-
-
 	}
 }
 

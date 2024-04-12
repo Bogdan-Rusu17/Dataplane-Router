@@ -34,7 +34,7 @@
 typedef struct package {
     char *buf;
     size_t len;
-    int interface;
+    struct route_table_entry *best_route;
 } package;
 
 void send_icmp_echo_reply(int interface, char *pack, size_t pack_len);
